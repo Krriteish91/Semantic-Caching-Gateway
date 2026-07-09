@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from app.models.request import ChatRequest
 from app.models.response import ChatResponse
+from app.providers.ollama_provider import OllamaProvider
 
 router = APIRouter()
-
+provider = OllamaProvider()
 
 @router.get("/")
 def root():
@@ -20,9 +21,11 @@ def health():
         "redis": "not connected yet"
     }
 @router.post("/v1/chat/completions",response_model=ChatResponse)
-def chat_completions(request: ChatRequest):
+async def chat_completions(request: ChatRequest):
+    response = await provider.generate(request)
+
     return ChatResponse(
-        response="Gateway is working!",
+        response=response,
         cache_hit=False,
         cache_type=None,
         similarity_score=None,
