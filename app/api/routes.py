@@ -1,4 +1,6 @@
 from fastapi import APIRouter
+from app.models.request import ChatRequest
+from app.models.response import ChatResponse
 
 router = APIRouter()
 
@@ -17,3 +19,11 @@ def health():
         "api": "healthy",
         "redis": "not connected yet"
     }
+@router.post("/v1/chat/completions",response_model=ChatResponse)
+def chat_completions(request: ChatRequest):
+    return ChatResponse(
+        response="Gateway is working!",
+        cache_hit=False,
+        cache_type=None,
+        similarity_score=None,
+    )
