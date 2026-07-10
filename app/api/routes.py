@@ -4,12 +4,12 @@ from app.models.response import ChatResponse
 from app.providers.ollama_provider import OllamaProvider
 from app.utils.hashing import generate_cache_key
 from app.cache.redis_cache import RedisCache
-
+from app.services.semantic_cache import SemanticCache
 
 router = APIRouter()
 provider = OllamaProvider()
 cache = RedisCache()
-
+semantic_cache = SemanticCache()
 
 @router.get("/")
 def root():
@@ -39,6 +39,27 @@ async def chat_completions(request: ChatRequest):
             cache_type="exact",
             similarity_score=1.0,
         )
+
+    query = " ".join(
+        message.content
+        for message in request.messages
+        if message.role == "user"
+    )
+
+    semantic_result = semantic_cache.search(query)
+
+    if semantic_result:
+
+        payload = semantic_result["payload"]
+
+        return ChatResponse(
+            response=payload["response"],
+            cache_hit=True,
+            cache_type="semantic",
+            similarity_score=semantic_result["score"],
+        )
+
+    
     response = await provider.generate(request)
     cache.set(
         key=cache_key,
@@ -47,7 +68,15 @@ async def chat_completions(request: ChatRequest):
         },
         ttl=3600,  # 1 hour
     )
+    embedding = semantic_cache.embedding_service.generate_embedding(query)
 
+    semantic_cache.qdrant_service.store_embedding(
+        embedding=embedding,
+        query=query,
+        response=response,
+        cache_key=cache_key,
+        model=request.model,
+    )
     return ChatResponse(
         response=response,
         cache_hit=False,

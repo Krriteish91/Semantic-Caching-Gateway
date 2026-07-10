@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
 
+    SEMANTIC_THRESHOLD: float = 0.94
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
