@@ -4,11 +4,10 @@ from app.core.config import Settings
 
 class SemanticCache:
 
-    THRESHOLD = Settings().SEMANTIC_THRESHOLD
-
     def __init__(self):
         self.embedding_service = EmbeddingService()
         self.qdrant_service = QdrantService()
+        self.settings = Settings()
 
     def search(self, query: str):
 
@@ -21,7 +20,7 @@ class SemanticCache:
 
         best_match = results[0]
         print("Best score:", best_match.score)
-        if best_match.score < self.THRESHOLD:
+        if best_match.score < self.settings.SEMANTIC_THRESHOLD:
             return None
 
         return {

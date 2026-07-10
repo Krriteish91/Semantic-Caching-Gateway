@@ -6,5 +6,3 @@ embedding_service = EmbeddingService()
 qdrant_service = QdrantService()
 
 qdrant_service.create_collection()
-
-#

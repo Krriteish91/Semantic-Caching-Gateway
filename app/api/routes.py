@@ -5,11 +5,15 @@ from app.providers.ollama_provider import OllamaProvider
 from app.utils.hashing import generate_cache_key
 from app.cache.redis_cache import RedisCache
 from app.services.semantic_cache import SemanticCache
+from app.core.exceptions import ProviderException
+from app.services.chat_service import ChatService
 
 router = APIRouter()
+chat_service = ChatService()
 provider = OllamaProvider()
 cache = RedisCache()
 semantic_cache = SemanticCache()
+
 
 @router.get("/")
 def root():
@@ -27,40 +31,21 @@ def health():
     }
 @router.post("/v1/chat/completions",response_model=ChatResponse)
 async def chat_completions(request: ChatRequest):
-    cache_key = generate_cache_key(request)
+    
+    cache_key, cached_response = chat_service.check_exact_cache(request)
 
-    cached = cache.get(cache_key)
+    if cached_response:
+        return cached_response
 
-    if cached:
-
-        return ChatResponse(
-            response=cached["response"],
-            cache_hit=True,
-            cache_type="exact",
-            similarity_score=1.0,
-        )
-
-    query = " ".join(
-        message.content
-        for message in request.messages
-        if message.role == "user"
+    query, semantic_response = chat_service.check_semantic_cache(
+        request
     )
 
-    semantic_result = semantic_cache.search(query)
-
-    if semantic_result:
-
-        payload = semantic_result["payload"]
-
-        return ChatResponse(
-            response=payload["response"],
-            cache_hit=True,
-            cache_type="semantic",
-            similarity_score=semantic_result["score"],
-        )
+    if semantic_response:
+        return semantic_response
 
     
-    response = await provider.generate(request)
+    response = await chat_service.generate_response(request)
     cache.set(
         key=cache_key,
         value={
