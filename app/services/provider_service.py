@@ -1,5 +1,6 @@
 from app.providers.ollama_provider import OllamaProvider
-
+from app.core.logger import logger
+import time
 
 class ProviderService:
 
@@ -9,4 +10,16 @@ class ProviderService:
 
     async def generate(self, request):
 
-        return await self.provider.generate(request)
+        logger.info(f"Calling provider | model={request.model}")
+
+        start_time = time.perf_counter()
+
+        response = await self.provider.generate(request)
+
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+        logger.info(
+            f"Provider response received | latency={elapsed_ms:.2f} ms"
+        )
+
+        return response

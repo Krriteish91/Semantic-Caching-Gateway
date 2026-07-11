@@ -1,31 +1,39 @@
 from app.cache.redis_cache import RedisCache
-from app.providers.ollama_provider import OllamaProvider
 from app.services.semantic_cache import SemanticCache
 from app.models.request import ChatRequest
 from app.models.response import ChatResponse
 from app.utils.hashing import generate_cache_key
+from app.services.cache_service import CacheService
+from app.services.provider_service import ProviderService
+from app.core.logger import logger
+from app.core.metrics import REQUEST_COUNTER
 
 class ChatService:
 
-    def __init__(self):
+    def __init__(
+        self,
+        cache_service: CacheService,
+        provider_service: ProviderService,
+    ):
 
-        self.provider = OllamaProvider()
+        self.cache_service = cache_service
+        self.provider_service = provider_service
 
-        self.cache = RedisCache()
-
+        # Temporary until we finish the refactor
+        self.redis = RedisCache()
         self.semantic_cache = SemanticCache()
     
-    def check_exact_cache(
+    def check_exact(
         self,
         request: ChatRequest,
     ) -> tuple[str, ChatResponse | None]:
 
         cache_key = generate_cache_key(request)
 
-        cached = self.cache.get(cache_key)
-
+        cached = self.redis.get(cache_key)
+       
         if cached:
-
+            logger.info("Exact cache hit")
             return (
                 cache_key,
                 ChatResponse(
@@ -35,10 +43,10 @@ class ChatService:
                     similarity_score=1.0,
                 ),
             )
-
+        
         return cache_key, None
 
-    def check_semantic_cache(
+    def check_semantic(
         self,
         request: ChatRequest,
     ) -> tuple[str, ChatResponse | None]:
@@ -54,7 +62,9 @@ class ChatService:
         if semantic_result:
 
             payload = semantic_result["payload"]
-
+            logger.info(
+                f"Semantic cache hit | score={semantic_result['score']:.4f}"
+            )
             return (
                 query,
                 ChatResponse(
@@ -66,9 +76,79 @@ class ChatService:
             )
 
         return query, None
+    
+    def store_semantic(
+        self,
+        query: str,
+        response: str,
+        cache_key: str,
+        model: str,
+    ):
+        self.cache_service.store_semantic(
+            query=query,
+            response=response,
+            cache_key=cache_key,
+            model=model,
+        )
+    
+    def store_exact(
+        self,
+        cache_key: str,
+        response: str,
+    ):
+        self.cache_service.store_exact(
+            cache_key=cache_key,
+            response=response,
+        )
+    
     async def generate_response(
         self,
         request: ChatRequest,
     ) -> str:
 
-        return await self.provider.generate(request)
+        return await self.provider_service.generate(request)
+
+    def build_response(
+            self,
+            response: str,
+        ) -> ChatResponse:
+
+            return ChatResponse(
+                response=response,
+                cache_hit=False,
+                cache_type=None,
+                similarity_score=None,
+            )
+    async def chat(
+        self,
+        request: ChatRequest,
+    ) -> ChatResponse:
+    
+        REQUEST_COUNTER.inc()
+        logger.info("ChatService.chat() called")
+        cache_key, cached_response = self.check_exact(request)
+
+        if cached_response:
+            return cached_response
+
+        query, semantic_response = self.check_semantic(request)
+
+        if semantic_response:
+            return semantic_response
+
+        logger.info("Cache miss")
+        response = await self.generate_response(request)
+
+        self.store_exact(
+            cache_key=cache_key,
+            response=response,
+        )
+
+        self.store_semantic(
+            query=query,
+            response=response,
+            cache_key=cache_key,
+            model=request.model,
+        )
+
+        return self.build_response(response)
