@@ -31,5 +31,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run unit tests
+        env:
+          APP_NAME: "SemanticCachingGateway"
+          REDIS_HOST: "localhost"
+          REDIS_PORT: "6379"
+          # Add any other required environment variables
         run: |
           pytest tests/unit -v
