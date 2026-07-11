@@ -71,3 +71,15 @@ class QdrantService:
         )
 
         return results.points
+        
+    def ping(self) -> bool:
+
+        try:
+
+            self.client.get_collections()
+
+            return True
+
+        except Exception:
+
+            return False

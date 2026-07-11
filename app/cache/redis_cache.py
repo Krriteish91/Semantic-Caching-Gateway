@@ -26,3 +26,12 @@ class RedisCache:
             return None
 
         return json.loads(value)
+    def ping(self) -> bool:
+
+        try:
+
+            return self.client.ping()
+
+        except Exception:
+
+            return False

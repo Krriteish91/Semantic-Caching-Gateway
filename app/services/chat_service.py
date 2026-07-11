@@ -1,12 +1,16 @@
-from app.cache.redis_cache import RedisCache
-from app.services.semantic_cache import SemanticCache
+    
 from app.models.request import ChatRequest
 from app.models.response import ChatResponse
 from app.utils.hashing import generate_cache_key
 from app.services.cache_service import CacheService
 from app.services.provider_service import ProviderService
 from app.core.logger import logger
-from app.core.metrics import REQUEST_COUNTER
+from app.core.metrics import (
+    REQUEST_COUNTER,
+    EXACT_CACHE_HITS,
+    SEMANTIC_CACHE_HITS,
+    CACHE_MISSES,
+)
 
 class ChatService:
 
@@ -19,9 +23,6 @@ class ChatService:
         self.cache_service = cache_service
         self.provider_service = provider_service
 
-        # Temporary until we finish the refactor
-        self.redis = RedisCache()
-        self.semantic_cache = SemanticCache()
     
     def check_exact(
         self,
@@ -30,9 +31,10 @@ class ChatService:
 
         cache_key = generate_cache_key(request)
 
-        cached = self.redis.get(cache_key)
+        cached = self.cache_service.redis.get(cache_key)
        
         if cached:
+            EXACT_CACHE_HITS.inc()
             logger.info("Exact cache hit")
             return (
                 cache_key,
@@ -57,11 +59,14 @@ class ChatService:
             if message.role == "user"
         )
 
-        semantic_result = self.semantic_cache.search(query)
+        semantic_result = self.cache_service.semantic.search(query)
 
         if semantic_result:
 
             payload = semantic_result["payload"]
+
+            SEMANTIC_CACHE_HITS.inc()
+
             logger.info(
                 f"Semantic cache hit | score={semantic_result['score']:.4f}"
             )
@@ -123,7 +128,7 @@ class ChatService:
         self,
         request: ChatRequest,
     ) -> ChatResponse:
-    
+
         REQUEST_COUNTER.inc()
         logger.info("ChatService.chat() called")
         cache_key, cached_response = self.check_exact(request)
@@ -136,7 +141,10 @@ class ChatService:
         if semantic_response:
             return semantic_response
 
+        CACHE_MISSES.inc()
+
         logger.info("Cache miss")
+        
         response = await self.generate_response(request)
 
         self.store_exact(
