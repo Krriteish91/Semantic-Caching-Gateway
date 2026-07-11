@@ -1,4 +1,5 @@
 from app.providers.ollama_provider import OllamaProvider
+from app.core.exceptions import ProviderException
 from app.core.logger import logger
 import time
 
@@ -10,16 +11,24 @@ class ProviderService:
 
     async def generate(self, request):
 
-        logger.info(f"Calling provider | model={request.model}")
+        try:
 
-        start_time = time.perf_counter()
+            logger.info(f"Calling provider | model={request.model}")
 
-        response = await self.provider.generate(request)
+            start_time = time.perf_counter()
 
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+            response = await self.provider.generate(request)
 
-        logger.info(
-            f"Provider response received | latency={elapsed_ms:.2f} ms"
-        )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
 
-        return response
+            logger.info(
+                f"Provider response received | latency={elapsed_ms:.2f} ms"
+            )
+
+            return response
+
+        except Exception as e:
+
+            logger.exception("Provider request failed")
+
+            raise ProviderException(str(e))
