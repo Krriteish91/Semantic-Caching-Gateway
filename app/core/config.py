@@ -2,11 +2,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str
-    APP_VERSION: str
+    APP_NAME: str = "Semantic Cache Gateway"
 
-    HOST: str
-    PORT: int
+    APP_VERSION: str = "1.0.0"
+
+    HOST: str = "0.0.0.0"
+
+    PORT: int = 8000
 
     REDIS_HOST: str
     REDIS_PORT: int
