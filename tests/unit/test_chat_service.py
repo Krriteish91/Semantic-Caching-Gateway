@@ -70,8 +70,8 @@ async def test_chat_calls_provider_on_cache_miss(mocker):
         return_value="Generated response"
     )
 
-    cache_service.check_exact_cache.return_value = (None, None)
-    cache_service.check_semantic_cache.return_value = (None, None)
+    cache_service.redis.get.return_value = None
+    cache_service.semantic_cache.search.return_value = (None, None)
 
     chat_service = ChatService(
         cache_service=cache_service,
