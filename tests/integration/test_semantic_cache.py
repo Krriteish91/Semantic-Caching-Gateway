@@ -1,4 +1,4 @@
-from app.services.semantic_cache import SemanticCache
+from app.services.semantic_cache_service import SemanticCache
 
 cache = SemanticCache()
 

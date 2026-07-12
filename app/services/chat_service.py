@@ -1,4 +1,4 @@
-    
+import time   
 from app.models.request import ChatRequest
 from app.models.response import ChatResponse
 from app.utils.hashing import generate_cache_key
@@ -10,6 +10,7 @@ from app.core.metrics import (
     EXACT_CACHE_HITS,
     SEMANTIC_CACHE_HITS,
     CACHE_MISSES,
+    REQUEST_LATENCY,
 )
 
 class ChatService:
@@ -129,16 +130,23 @@ class ChatService:
         request: ChatRequest,
     ) -> ChatResponse:
 
+        start_time = time.perf_counter()
         REQUEST_COUNTER.inc()
         logger.info("ChatService.chat() called")
         cache_key, cached_response = self.check_exact(request)
 
         if cached_response:
+            REQUEST_LATENCY.observe(
+                time.perf_counter() - start_time
+            )
             return cached_response
 
         query, semantic_response = self.check_semantic(request)
 
         if semantic_response:
+            REQUEST_LATENCY.observe(
+                time.perf_counter() - start_time
+            )
             return semantic_response
 
         CACHE_MISSES.inc()
@@ -158,5 +166,7 @@ class ChatService:
             cache_key=cache_key,
             model=request.model,
         )
-
+        REQUEST_LATENCY.observe(
+                time.perf_counter() - start_time
+            )
         return self.build_response(response)

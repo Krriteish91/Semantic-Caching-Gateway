@@ -1,5 +1,5 @@
 from app.cache.redis_cache import RedisCache
-from app.services.semantic_cache import SemanticCache
+from app.services.semantic_cache_service import SemanticCache
 from app.services.embedding_service import EmbeddingService
 from app.services.qdrant_service import QdrantService
 from app.core.logger import logger

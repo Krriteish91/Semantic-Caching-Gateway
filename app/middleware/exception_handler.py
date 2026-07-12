@@ -5,7 +5,7 @@ from app.core.exceptions import (
     SemanticCacheException,
 )
 from app.core.logger import logger
-
+from app.core.metrics import REQUEST_FAILURES
 
 def register_exception_handlers(app: FastAPI):
 
@@ -14,7 +14,7 @@ def register_exception_handlers(app: FastAPI):
         request: Request,
         exc: SemanticCacheException,
     ):
-
+        REQUEST_FAILURES.inc()
         logger.exception(str(exc))
 
         return JSONResponse(
@@ -32,7 +32,7 @@ def register_exception_handlers(app: FastAPI):
         request: Request,
         exc: Exception,
     ):
-
+        REQUEST_FAILURES.inc()
         logger.exception(str(exc))
 
         return JSONResponse(

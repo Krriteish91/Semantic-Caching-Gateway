@@ -1,4 +1,5 @@
 from prometheus_client import Counter
+from prometheus_client import Histogram
 
 # Request Metrics
 REQUEST_COUNTER = Counter(
@@ -18,4 +19,13 @@ SEMANTIC_CACHE_HITS = Counter(
 CACHE_MISSES = Counter(
     "semantic_cache_misses_total",
     "Total number of cache misses",
+)
+
+REQUEST_LATENCY = Histogram(
+    "semantic_cache_request_latency_seconds",
+    "Time spent processing chat requests"
+)
+REQUEST_FAILURES = Counter(
+    "semantic_cache_request_failures_total",
+    "Total number of failed chat requests",
 )
